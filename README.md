@@ -8,7 +8,7 @@
 ##热更新解决方案
 ### 1.在AppDelegate的 (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions方法中启动JSPatch引擎(下载脚本有同步和异步两种方法)。
 
-* ###同步下载
+* 同步下载
 ```Objective-C
 [JPEngine startEngine];
     NSURL *url = [NSURL URLWithString:@"https://raw.githubusercontent.com/Mag1cPanda/JSPatchTest/master/callx.js"];
@@ -22,7 +22,7 @@
     [JPEngine evaluateScript:script];
 ```
 
-* ###异步下载
+* 异步下载
 ```Objective-C
 [JPEngine startEngine];
     NSURL *url = [NSURL URLWithString:@"https://raw.githubusercontent.com/Mag1cPanda/JSPatchTest/master/callx.js"];
@@ -37,7 +37,47 @@
         self.window.rootViewController = vc;
     }];
 ```
+===
 ### 2.在发现bug的时候，在GitHub上配置好用来修复bug的脚本，(放到gitHub上是为了测试方便，后期可以部署到我们自己的服务器上)，配置好后提交到gitHub仓库中，程序再次运行时，有bug的方法就被替换了，这样就在无需等待AppStore审核的情况下实现了热更新。
+===
+### 3.关于脚本的编写：我们可以直接编写需要替换的Objective-C代码，然后使用JSPatch提供的[JSPatchConvertor](http://bang590.github.io/JSPatchConvertor/)转换为JavaScript代码。
+*转换代码示例
+* Objective-C代码
+```Objective-C
+@implementation SampleClass
+- (void)requestUrl:(NSString *)url param:(NSDictionary *)dict callback:(JPCallback)callback {
+    [super requestUrl:url param:dict callback:callback];
+    JPRequest *obj = [[JPRequest alloc] initWithUrl:url param:dict];
+    obj.successBlock = ^(id data, NSError *err) {
+        NSString *content = [JPParser parseData:data];
+        if (callback) callback(@{
+            @"content": content
+        }, err);
+        [self.dataSource refresh];
+        self.handleRequestSuccess(data);
+    };
+}
+@end
+```
+
+* JavaScript代码
+```JavaScript
+require('JPRequest,JPParser');
+defineClass('SampleClass', {
+    requestUrl_param_callback: function(url, dict, callback) {
+        self.super().requestUrl_param_callback(url, dict, callback);
+        var obj = JPRequest.alloc().initWithUrl_param(url, dict);
+        obj.setSuccessBlock(block('id,NSError*', function(data, err) {
+            var content = JPParser.parseData(data);
+            if (callback) callback({
+                "content": content
+            }, err);
+            self.dataSource().refresh();
+            self.handleRequestSuccess()(data);
+        }));
+    },
+});
+```
 
 
 
